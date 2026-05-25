@@ -4,7 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class NoCacheMw
 {
@@ -14,8 +16,14 @@ class NoCacheMw
      */
     public function handle(Request $request, Closure $next): Response
     {
-        /** @var \Symfony\Component\HttpFoundation\Response $response */
-        $response = $next($request);
+        try {
+            /** @var \Symfony\Component\HttpFoundation\Response $response */
+            $response = $next($request);
+        } catch (Throwable $e) {
+            Log::error('Request failed in NoCacheMw: '.$e->getMessage());
+
+            $response = new Response('Service Unavailable', 503);
+        }
 
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
