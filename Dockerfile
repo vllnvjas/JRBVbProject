@@ -13,7 +13,10 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-RUN cp .env.example .env
+RUN cp .env.example .env \
+	&& printf '\nSESSION_DRIVER=file\nHASH_DRIVER=bcrypt\n' >> .env
+
+RUN printf 'CACHE_STORE=file\nQUEUE_CONNECTION=sync\nQUEUE_FAILED_DRIVER=file\n' >> .env
 
 RUN php artisan key:generate
 
