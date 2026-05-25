@@ -7,6 +7,8 @@ use App\Models\UserAccount;
 use App\Models\Student;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -36,16 +38,33 @@ class UserController extends Controller
         $attemptsKey = 'login-attempts:' . $normalizedUsername . '|' . $request->ip();
         $lockoutKey = 'login-lockout:' . $normalizedUsername . '|' . $request->ip();
 
-        if (RateLimiter::tooManyAttempts($lockoutKey, 1)) {
-            $seconds = RateLimiter::availableIn($lockoutKey);
+        $rateLimiterAvailable = true;
+        try {
+            if (RateLimiter::tooManyAttempts($lockoutKey, 1)) {
+                $seconds = RateLimiter::availableIn($lockoutKey);
 
-            return back()
-                ->withInput($request->only('username'))
-                ->with('msg', "Too many failed attempts. Please wait {$seconds} seconds and try again.")
-                ->with('lockout_seconds', $seconds);
+                return back()
+                    ->withInput($request->only('username'))
+                    ->with('msg', "Too many failed attempts. Please wait {$seconds} seconds and try again.")
+                    ->with('lockout_seconds', $seconds);
+            }
+        } catch (Throwable $e) {
+            // Cache (or DB-backed cache) may be unavailable in the deployed
+            // environment. Log and continue without rate limiting so users
+            // see a friendly 503 if the DB is the real problem.
+            Log::error('RateLimiter unavailable during login: ' . $e->getMessage());
+            $rateLimiterAvailable = false;
         }
 
-        $user = UserAccount::where('username', $username)->first();
+        try {
+            $user = UserAccount::where('username', $username)->first();
+        } catch (Throwable $e) {
+            Log::error('Database unavailable when fetching user: ' . $e->getMessage());
+            if (view()->exists('errors.503')) {
+                return response()->view('errors.503', ['message' => 'Database unavailable. Please try again later.'], 503);
+            }
+            return response('Service Unavailable', 503);
+        }
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
             // If the application default hasher changed (to bcrypt) and the
@@ -69,8 +88,17 @@ class UserController extends Controller
                 ->with('success', 'Succesful login');
         }
 
-        RateLimiter::hit($attemptsKey, 600);
-        $failedAttempts = RateLimiter::attempts($attemptsKey);
+        try {
+            if ($rateLimiterAvailable) {
+                RateLimiter::hit($attemptsKey, 600);
+                $failedAttempts = RateLimiter::attempts($attemptsKey);
+            } else {
+                $failedAttempts = 0;
+            }
+        } catch (Throwable $e) {
+            Log::error('RateLimiter hit failed: ' . $e->getMessage());
+            $failedAttempts = 0;
+        }
         $remainingAttempts = max(0, 3 - $failedAttempts);
 
         $message = 'Incorrect credentials.';
