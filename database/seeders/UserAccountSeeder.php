@@ -15,15 +15,6 @@ class UserAccountSeeder extends Seeder
     {
         $accounts = [
             [
-                'name' => env('SEED_ADMIN_NAME', 'Deploy Admin'),
-                'username' => env('SEED_ADMIN_USERNAME', 'deployadmin'),
-                'email' => env('SEED_ADMIN_EMAIL', 'deployadmin@example.com'),
-                'password' => Hash::make(env('SEED_ADMIN_PASSWORD', 'Admin@12345')),
-                'role' => 'admin',
-                'is_active' => 1,
-                'must_change_password' => 0,
-            ],
-            [
                 'name' => 'Admin User',
                 'username' => 'admin',
                 'email' => 'admin@example.com',

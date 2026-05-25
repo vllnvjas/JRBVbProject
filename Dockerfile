@@ -13,6 +13,8 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
+RUN chmod +x /var/www/docker/start.sh
+
 RUN cp .env.example .env \
 	&& printf '\nSESSION_DRIVER=file\nHASH_DRIVER=bcrypt\n' >> .env
 
@@ -22,5 +24,5 @@ RUN php artisan key:generate
 
 EXPOSE 10000
 
-CMD php artisan serve --host=0.0.0.0 --port=10000
+CMD ["/var/www/docker/start.sh"]
 #  CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT

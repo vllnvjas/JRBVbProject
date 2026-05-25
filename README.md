@@ -57,3 +57,27 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Deployment Auto-Restore Bootstrap
+
+For container deployments (Render/Railway/Docker), this project now boots with `docker/start.sh`.
+
+At startup it will:
+
+1. Clear config cache.
+2. Wait for database connectivity.
+3. Run `php artisan migrate --force`.
+4. Run `php artisan db:seed --force`.
+5. Start the app server.
+
+Environment flags:
+
+- `MIGRATE_ON_STARTUP=true|false`
+- `SEED_ON_STARTUP=true|false`
+- `DB_WAIT_RETRIES=30`
+- `DB_WAIT_SECONDS=2`
+
+Important:
+
+- This restores schema and seed data automatically.
+- It does not restore deleted real production records unless your database volume/backups are configured correctly.
