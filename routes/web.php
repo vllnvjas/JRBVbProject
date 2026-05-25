@@ -9,7 +9,10 @@ use App\Http\Controllers\PSUController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserController;
 
-Route::get('/', [UserController::class, 'showLogin'])->name('login');
+Route::get('/', [UserController::class, 'showLogin']);
+// Provide a GET route for /login so deployed instances that request /login
+// (instead of /) receive the login page instead of a 405 Method Not Allowed.
+Route::get('/login', [UserController::class, 'showLogin'])->name('login');
 Route::post('/login', [UserController::class, 'login'])->name('login.submit');
 Route::post('/logout', [UserController::class, 'logout'])->name('logout');
 
