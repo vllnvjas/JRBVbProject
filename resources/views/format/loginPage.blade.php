@@ -393,7 +393,7 @@
                 </p>
             @endif
 
-            <form method="POST" action="{{ route('login.submit') }}" novalidate id="loginForm">
+            <div data-js-form data-native-submit="true" data-action="{{ route('login.submit') }}" novalidate id="loginForm">
                 @csrf
 
                 <div class="field-group">
@@ -434,8 +434,8 @@
                     <a class="forgot-link" href="{{ Route::has('password.request') ? route('password.request') : url('/forgot-password') }}">Forgot password?</a>
                 </div>
 
-                <button type="submit" class="btn-submit" id="loginSubmitButton">Login</button>
-            </form>
+                <button type="button" class="btn-submit" id="loginSubmitButton" data-js-submit>Login</button>
+            </div>
         </div>
     </section>
 

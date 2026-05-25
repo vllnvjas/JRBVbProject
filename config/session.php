@@ -18,7 +18,11 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    // Default to the local file session driver to avoid accidental DB
+    // connection attempts on deployments where the sessions table or
+    // database may not be available. Override with `SESSION_DRIVER`
+    // in your environment when you intentionally want a different driver.
+    'driver' => env('SESSION_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------
