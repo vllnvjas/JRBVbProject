@@ -376,13 +376,6 @@
             <h2>Login</h2>
             <p class="subtitle">Use your account credentials to continue.</p>
 
-            @if (session('success'))
-                <div class="notice notice-success" role="status">{{ session('success') }}</div>
-                @if (session('redirect_to'))
-                    <p class="redirect-note">Redirecting...</p>
-                @endif
-            @endif
-
             @if (session('msg'))
                 <div class="notice notice-error" role="alert">{{ session('msg') }}</div>
             @endif
@@ -438,14 +431,6 @@
             </form>
         </div>
     </section>
-
-    @if (session('success') && session('redirect_to'))
-        <script>
-            window.setTimeout(function () {
-                window.location.href = @json(session('redirect_to'));
-            }, 1800);
-        </script>
-    @endif
 
     <script>
         (function () {
