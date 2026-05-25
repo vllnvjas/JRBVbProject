@@ -340,10 +340,10 @@ footer {
                 </li>
                 @endif
                 <li class="nav-item">
-                    <div class="m-0" data-js-form data-action="{{ route('logout') }}">
+                    <form class="m-0" method="POST" action="{{ route('logout') }}" data-js-form data-action="{{ route('logout') }}">
                         @csrf
-                        <button type="button" class="nav-link border-0 bg-transparent w-100 text-start" data-js-submit>Logout</button>
-                    </div>
+                        <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" data-js-submit>Logout</button>
+                    </form>
                 </li>
             </ul>
         </div>

@@ -19,7 +19,7 @@
         </div>
         @endif
 
-        <div id="adminAddTeacherForm" data-js-form data-action="{{ route('admin.teachers.store') }}" data-reload-on-success="false" data-success-message="Teacher account added successfully.">
+        <form id="adminAddTeacherForm" method="POST" action="{{ route('admin.teachers.store') }}" data-js-form data-action="{{ route('admin.teachers.store') }}" data-reload-on-success="false" data-success-message="Teacher account added successfully.">
             @csrf
 
             <div class="row g-3">
@@ -93,8 +93,8 @@
                 </div>
             </div>
 
-            <button type="button" class="btn btn-primary mt-4 px-4" data-js-submit>Save Teacher</button>
-        </div>
+            <button type="submit" class="btn btn-primary mt-4 px-4" data-js-submit>Save Teacher</button>
+        </form>
     </div>
 </div>
 <script>

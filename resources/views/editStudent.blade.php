@@ -19,7 +19,7 @@
         </div>
         @endif
 
-        <div data-js-form data-action="{{ route('students.update', $student->id) }}">
+        <form method="POST" action="{{ route('students.update', $student->id) }}" data-js-form data-action="{{ route('students.update', $student->id) }}">
             @csrf
             @method('PUT')
 
@@ -78,8 +78,8 @@
                 </div>
             </div>
 
-            <button type="button" class="btn btn-primary mt-4 px-4" data-js-submit>Update</button>
-        </div>
+            <button type="submit" class="btn btn-primary mt-4 px-4" data-js-submit>Update</button>
+        </form>
     </div>
 </div>
 @endsection

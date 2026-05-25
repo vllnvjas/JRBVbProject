@@ -19,7 +19,7 @@
         </div>
         @endif
 
-        <div data-js-form data-action="{{ route('teacher.profile.update') }}">
+        <form method="POST" action="{{ route('teacher.profile.update') }}" data-js-form data-action="{{ route('teacher.profile.update') }}">
             @csrf
             @method('PUT')
 
@@ -71,8 +71,8 @@
 
             </div>
 
-            <button type="button" class="btn btn-primary mt-4 px-4" data-js-submit>Update Profile</button>
-        </div>
+            <button type="submit" class="btn btn-primary mt-4 px-4" data-js-submit>Update Profile</button>
+        </form>
     </div>
 </div>
 @endsection

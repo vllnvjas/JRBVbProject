@@ -146,10 +146,10 @@
                 <p>Only your account details are shown here.</p>
             </div>
 
-            <div class="logout-form m-0" data-js-form data-action="{{ route('logout') }}">
+            <form class="logout-form m-0" method="POST" action="{{ route('logout') }}" data-js-form data-action="{{ route('logout') }}">
                 @csrf
-                <button type="button" data-js-submit>Logout</button>
-            </div>
+                <button type="submit" data-js-submit>Logout</button>
+            </form>
         </header>
 
         <section class="profile-body" id="studentProfileDetailsContainer" data-autoreload>

@@ -19,7 +19,7 @@
         </div>
         @endif
 
-        <div id="adminEditTeacherForm" data-js-form data-action="{{ route('admin.teachers.update', $teacher->id) }}" data-reload-on-success="false" data-success-message="Teacher updated successfully.">
+        <form id="adminEditTeacherForm" method="POST" action="{{ route('admin.teachers.update', $teacher->id) }}" data-js-form data-action="{{ route('admin.teachers.update', $teacher->id) }}" data-reload-on-success="false" data-success-message="Teacher updated successfully.">
             @csrf
             @method('PUT')
 
@@ -78,8 +78,8 @@
                 </div>
             </div>
 
-            <button type="button" class="btn btn-primary mt-4 px-4" data-js-submit>Update Teacher</button>
-        </div>
+            <button type="submit" class="btn btn-primary mt-4 px-4" data-js-submit>Update Teacher</button>
+        </form>
     </div>
 </div>
 

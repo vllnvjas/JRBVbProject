@@ -180,7 +180,7 @@
             <div class="notice" role="alert">{{ session('msg') }}</div>
         @endif
 
-        <div data-js-form data-native-submit="true" data-action="{{ route('first-login.password.update') }}">
+        <form method="POST" action="{{ route('first-login.password.update') }}" data-js-form data-native-submit="true" data-action="{{ route('first-login.password.update') }}">
             @csrf
 
             <div class="field-group">
@@ -243,8 +243,8 @@
                 </div>
             </div>
 
-            <button type="button" class="btn-submit" data-js-submit>Save New Password</button>
-        </div>
+            <button type="submit" class="btn-submit" data-js-submit>Save New Password</button>
+        </form>
     </main>
 
     <script>
