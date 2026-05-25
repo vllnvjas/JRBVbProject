@@ -81,9 +81,8 @@ class UserController extends Controller
                     $redirectTo = route('students.show', $studentId);
                 }
 
-                return redirect()->route('login')
-                    ->with('success', 'Succesful login')
-                    ->with('redirect_to', $redirectTo);
+                return redirect($redirectTo)
+                    ->with('success', 'Successful login');
             }
         } catch (QueryException $e) {
             Log::error('Database error during login: ' . $e->getMessage());
