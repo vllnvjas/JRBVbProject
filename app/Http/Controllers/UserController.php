@@ -7,6 +7,8 @@ use App\Models\UserAccount;
 use App\Models\Student;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -45,42 +47,52 @@ class UserController extends Controller
                 ->with('lockout_seconds', $seconds);
         }
 
-        $user = UserAccount::where('username', $username)->first();
+        try {
+            $user = UserAccount::where('username', $username)->first();
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
-            // If the application default hasher changed (to bcrypt) and the
-            // stored password was hashed with a different algorithm (e.g.
-            // argon2id), re-hash it with the current hasher on successful
-            // authentication. This upgrades hashes transparently without
-            // requiring users to reset passwords.
-            if (Hash::needsRehash($user->password)) {
-                $user->password = Hash::make($credentials['password']);
-                $user->save();
+            if ($user && Hash::check($credentials['password'], $user->password)) {
+                // If the application default hasher changed (to bcrypt) and the
+                // stored password was hashed with a different algorithm (e.g.
+                // argon2id), re-hash it with the current hasher on successful
+                // authentication. This upgrades hashes transparently without
+                // requiring users to reset passwords.
+                if (Hash::needsRehash($user->password)) {
+                    $user->password = Hash::make($credentials['password']);
+                    $user->save();
+                }
+                RateLimiter::clear($attemptsKey);
+                RateLimiter::clear($lockoutKey);
+                $request->session()->put('authenticated_user_id', $user->id);
+
+                if ((bool) ($user->must_change_password ?? false)) {
+                    return redirect()->route('first-login.password.form');
+                }
+
+                $studentId = Student::where('user_account_id', $user->id)->value('id');
+
+                $redirectTo = match ($user->role) {
+                    'admin' => route('admin.dashboard'),
+                    'teacher' => route('teacher.dashboard'),
+                    'student' => $studentId ? route('students.show', $studentId) : route('students.index'),
+                    default => route('students.index'),
+                };
+
+                if ($studentId && $user->role !== 'admin' && $user->role !== 'teacher' && $user->role !== 'student') {
+                    $redirectTo = route('students.show', $studentId);
+                }
+
+                return redirect()->route('login')
+                    ->with('success', 'Succesful login')
+                    ->with('redirect_to', $redirectTo);
             }
-            RateLimiter::clear($attemptsKey);
-            RateLimiter::clear($lockoutKey);
-            $request->session()->put('authenticated_user_id', $user->id);
+        } catch (QueryException $e) {
+            Log::error('Database error during login: ' . $e->getMessage());
 
-            if ((bool) ($user->must_change_password ?? false)) {
-                return redirect()->route('first-login.password.form');
+            if (view()->exists('errors.503')) {
+                return response()->view('errors.503', ['message' => 'Service temporarily unavailable.'], 503);
             }
 
-            $studentId = Student::where('user_account_id', $user->id)->value('id');
-
-            $redirectTo = match ($user->role) {
-                'admin' => route('admin.dashboard'),
-                'teacher' => route('teacher.dashboard'),
-                'student' => $studentId ? route('students.show', $studentId) : route('students.index'),
-                default => route('students.index'),
-            };
-
-            if ($studentId && $user->role !== 'admin' && $user->role !== 'teacher' && $user->role !== 'student') {
-                $redirectTo = route('students.show', $studentId);
-            }
-
-            return redirect()->route('login')
-                ->with('success', 'Succesful login')
-                ->with('redirect_to', $redirectTo);
+            return back()->with('msg', 'Service temporarily unavailable. Please try again later.');
         }
 
         RateLimiter::hit($attemptsKey, 600);
@@ -113,28 +125,37 @@ class UserController extends Controller
         if (!$authenticatedUserId) {
             return redirect()->route('login')->with('msg', 'Please log in first.');
         }
+        try {
+            $user = UserAccount::find($authenticatedUserId);
+            if (!$user || !(bool) ($user->must_change_password ?? false)) {
+                if ($user?->role === 'admin') {
+                    return redirect()->route('admin.dashboard');
+                }
+                if ($user?->role === 'teacher') {
+                    return redirect()->route('teacher.dashboard');
+                }
 
-        $user = UserAccount::find($authenticatedUserId);
-        if (!$user || !(bool) ($user->must_change_password ?? false)) {
-            if ($user?->role === 'admin') {
-                return redirect()->route('admin.dashboard');
+                if ($user?->role === 'student') {
+                    $studentId = Student::where('user_account_id', $user->id)->value('id');
+
+                    return $studentId
+                        ? redirect()->route('students.show', $studentId)
+                        : redirect()->route('students.index');
+                }
+
+                return redirect()->route('students.index');
             }
-            if ($user?->role === 'teacher') {
-                return redirect()->route('teacher.dashboard');
+
+            return view('format.firstLoginChangePassword');
+        } catch (QueryException $e) {
+            Log::error('Database error in showFirstLoginPasswordForm: ' . $e->getMessage());
+
+            if (view()->exists('errors.503')) {
+                return response()->view('errors.503', ['message' => 'Service temporarily unavailable.'], 503);
             }
 
-            if ($user?->role === 'student') {
-                $studentId = Student::where('user_account_id', $user->id)->value('id');
-
-                return $studentId
-                    ? redirect()->route('students.show', $studentId)
-                    : redirect()->route('students.index');
-            }
-
-            return redirect()->route('students.index');
+            return redirect()->route('login')->with('msg', 'Service temporarily unavailable. Please try again later.');
         }
-
-        return view('format.firstLoginChangePassword');
     }
 
     public function updateFirstLoginPassword(Request $request)
@@ -143,60 +164,69 @@ class UserController extends Controller
         if (!$authenticatedUserId) {
             return redirect()->route('login')->with('msg', 'Please log in first.');
         }
-
-        $user = UserAccount::find($authenticatedUserId);
-        if (!$user) {
-            return redirect()->route('login')->with('msg', 'Account not found.');
-        }
-
-        if (!(bool) ($user->must_change_password ?? false)) {
-            if ($user->role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            }
-            if ($user->role === 'teacher') {
-                return redirect()->route('teacher.dashboard');
+        try {
+            $user = UserAccount::find($authenticatedUserId);
+            if (!$user) {
+                return redirect()->route('login')->with('msg', 'Account not found.');
             }
 
-            return redirect()->route('students.index');
-        }
+            if (!(bool) ($user->must_change_password ?? false)) {
+                if ($user->role === 'admin') {
+                    return redirect()->route('admin.dashboard');
+                }
+                if ($user->role === 'teacher') {
+                    return redirect()->route('teacher.dashboard');
+                }
 
-        $validated = $request->validate([
-            'old_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ], [
-            'old_password.required' => 'Old password is required.',
-        ]);
-
-        if (!Hash::check($validated['old_password'], $user->password)) {
-            return back()
-                ->withErrors(['old_password' => 'Old password is incorrect.'])
-                ->withInput($request->except(['old_password', 'password', 'password_confirmation']));
-        }
-
-        $user->password = Hash::make($validated['password']);
-        $user->must_change_password = 0;
-        $user->save();
-
-        $redirectRoute = match ($user->role) {
-            'admin' => 'admin.dashboard',
-            'teacher' => 'teacher.dashboard',
-            'student' => Student::where('user_account_id', $user->id)->value('id')
-                ? 'students.show'
-                : 'students.index',
-            default => 'students.index',
-        };
-
-        if ($user->role === 'student') {
-            $studentId = Student::where('user_account_id', $user->id)->value('id');
-
-            if ($studentId) {
-                return redirect()->route('students.show', $studentId)
-                    ->with('success', 'Password changed successfully.');
+                return redirect()->route('students.index');
             }
-        }
 
-        return redirect()->route($redirectRoute)
-            ->with('success', 'Password changed successfully.');
+            $validated = $request->validate([
+                'old_password' => ['required', 'string'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ], [
+                'old_password.required' => 'Old password is required.',
+            ]);
+
+            if (!Hash::check($validated['old_password'], $user->password)) {
+                return back()
+                    ->withErrors(['old_password' => 'Old password is incorrect.'])
+                    ->withInput($request->except(['old_password', 'password', 'password_confirmation']));
+            }
+
+            $user->password = Hash::make($validated['password']);
+            $user->must_change_password = 0;
+            $user->save();
+
+            $redirectRoute = match ($user->role) {
+                'admin' => 'admin.dashboard',
+                'teacher' => 'teacher.dashboard',
+                'student' => Student::where('user_account_id', $user->id)->value('id')
+                    ? 'students.show'
+                    : 'students.index',
+                default => 'students.index',
+            };
+
+            if ($user->role === 'student') {
+                $studentId = Student::where('user_account_id', $user->id)->value('id');
+
+                if ($studentId) {
+                    return redirect()->route('students.show', $studentId)
+                        ->with('success', 'Password changed successfully.');
+                }
+            }
+
+            return redirect()->route($redirectRoute)
+                ->with('success', 'Password changed successfully.');
+        } catch (QueryException $e) {
+            Log::error('Database error in updateFirstLoginPassword: ' . $e->getMessage());
+
+            if (view()->exists('errors.503')) {
+                return response()->view('errors.503', ['message' => 'Service temporarily unavailable.'], 503);
+            }
+
+            return redirect()->route('login')->with('msg', 'Service temporarily unavailable. Please try again later.');
+        }
     }
 
     public function studentProfile(Request $request)
@@ -206,16 +236,25 @@ class UserController extends Controller
         if (!$authenticatedUserId) {
             return redirect()->route('login')->with('msg', 'Please log in first.');
         }
+        try {
+            $user = UserAccount::with(['students.degree', 'students.userAccount'])->find($authenticatedUserId);
 
-        $user = UserAccount::with(['students.degree', 'students.userAccount'])->find($authenticatedUserId);
+            if (!$user || $user->role !== 'student' || !$user->students) {
+                return redirect()->route('login')->with('msg', 'Student profile not available.');
+            }
 
-        if (!$user || $user->role !== 'student' || !$user->students) {
-            return redirect()->route('login')->with('msg', 'Student profile not available.');
+            return view('format.studentProfile', [
+                'student' => $user->students,
+            ]);
+        } catch (QueryException $e) {
+            Log::error('Database error in studentProfile: ' . $e->getMessage());
+
+            if (view()->exists('errors.503')) {
+                return response()->view('errors.503', ['message' => 'Service temporarily unavailable.'], 503);
+            }
+
+            return redirect()->route('login')->with('msg', 'Service temporarily unavailable. Please try again later.');
         }
-
-        return view('format.studentProfile', [
-            'student' => $user->students,
-        ]);
     }
 
     public function logout(Request $request)
