@@ -48,6 +48,15 @@ class UserController extends Controller
         $user = UserAccount::where('username', $username)->first();
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
+            // If the application default hasher changed (to bcrypt) and the
+            // stored password was hashed with a different algorithm (e.g.
+            // argon2id), re-hash it with the current hasher on successful
+            // authentication. This upgrades hashes transparently without
+            // requiring users to reset passwords.
+            if (Hash::needsRehash($user->password)) {
+                $user->password = Hash::make($credentials['password']);
+                $user->save();
+            }
             RateLimiter::clear($attemptsKey);
             RateLimiter::clear($lockoutKey);
             $request->session()->put('authenticated_user_id', $user->id);
