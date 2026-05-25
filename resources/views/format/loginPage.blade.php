@@ -393,7 +393,7 @@
                 </p>
             @endif
 
-            <form id="loginForm" method="POST" action="{{ route('login.submit') }}" data-js-form data-native-submit="true" data-action="{{ route('login.submit') }}" novalidate>
+            <form id="loginForm" method="POST" action="{{ route('login.submit', [], false) }}" data-js-form data-native-submit="true" data-action="{{ route('login.submit', [], false) }}" novalidate>
                 @csrf
 
                 <div class="field-group">
