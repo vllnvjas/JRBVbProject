@@ -243,21 +243,34 @@ class UserController extends Controller
 
     private function redirectAfterLogin(UserAccount $user)
     {
+        $target = null;
+
         if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard');
+            $target = route('admin.dashboard');
+        } elseif ($user->role === 'teacher') {
+            $target = route('teacher.dashboard');
+        } else {
+            $studentId = Student::where('user_account_id', $user->id)->value('id');
+            if ($studentId) {
+                $target = route('students.show', $studentId);
+            } else {
+                $target = route('students.index');
+            }
         }
 
-        if ($user->role === 'teacher') {
-            return redirect()->route('teacher.dashboard');
+        // Log redirect decision for debugging on deployed environments.
+        try {
+            \Illuminate\Support\Facades\Log::info('Login redirect', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'student_id' => $studentId ?? null,
+                'target' => $target,
+            ]);
+        } catch (\Throwable $_) {
+            // swallow logging errors to avoid breaking login flow
         }
 
-        $studentId = Student::where('user_account_id', $user->id)->value('id');
-
-        if ($studentId) {
-            return redirect()->route('students.show', $studentId);
-        }
-
-        return redirect()->route('students.index');
+        return redirect()->to($target);
     }
 
     /**
