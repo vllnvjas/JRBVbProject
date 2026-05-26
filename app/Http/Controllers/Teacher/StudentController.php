@@ -58,6 +58,7 @@ class StudentController extends Controller
         ]);
 
         $user = UserAccount::create([
+            'name' => trim($request->f_name . ' ' . ($request->filled('m_name') ? $request->m_name . ' ' : '') . $request->l_name),
             'username' => $request->username,
             'email' => $request->e_mail,
             'password' => Hash::make($request->password),
@@ -70,6 +71,7 @@ class StudentController extends Controller
             'fname' => $request->f_name,
             'mname' => $request->filled('m_name') ? $request->m_name : null,
             'lname' => $request->l_name,
+            'email' => $request->e_mail,
             'degree_id' => $request->degree_id,
             'contactInfo' => $request->contactInfo,
             'user_account_id' => $user->id,

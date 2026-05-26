@@ -111,6 +111,7 @@ class DashboardController extends Controller
         ]);
 
         $user = UserAccount::create([
+            'name' => trim($request->f_name . ' ' . ($request->filled('m_name') ? $request->m_name . ' ' : '') . $request->l_name),
             'username' => $request->username,
             'email' => $request->e_mail,
             'password' => Hash::make($request->input('password')),
@@ -124,6 +125,7 @@ class DashboardController extends Controller
             'fname' => $request->f_name,
             'mname' => $request->filled('m_name') ? $request->m_name : null,
             'lname' => $request->l_name,
+            'email' => $request->e_mail,
             'degree_id' => $request->degree_id,
             'contactInfo' => $request->contactInfo,
         ]);
@@ -369,7 +371,7 @@ class DashboardController extends Controller
         return view('admin.degrees', compact('degrees'));
     }
 
-    public function storeDegree(Request $request): RedirectResponse
+    public function storeDegree(Request $request)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:255', 'unique:degrees,name'],
@@ -384,6 +386,16 @@ class DashboardController extends Controller
             'degree_id' => $degree->id,
             'name' => $degree->name,
         ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => 'Degree added successfully.',
+                'degree' => [
+                    'id' => $degree->id,
+                    'name' => $degree->name,
+                ],
+            ], 201);
+        }
 
         return redirect()->route('admin.degrees.index')->with('success', 'Degree added successfully');
     }
@@ -428,7 +440,7 @@ class DashboardController extends Controller
         return redirect()->route('admin.degrees.index')->with('success', 'Degree updated successfully');
     }
 
-    public function deleteDegree(Degree $degree): RedirectResponse
+    public function deleteDegree(Degree $degree)
     {
         if ($degree->students()->exists()) {
             Log::warning('Admin degree delete blocked', [
@@ -438,9 +450,17 @@ class DashboardController extends Controller
                 'assigned_students_count' => $degree->students()->count(),
             ]);
 
+            $message = 'This degree cannot be deleted because students are assigned to it.';
+
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 422);
+            }
+
             return redirect()
                 ->route('admin.degrees.index')
-                ->with('error', 'This degree cannot be deleted because students are assigned to it.');
+                ->with('error', $message);
         }
 
         Log::info('Admin deleted degree', [
@@ -450,6 +470,12 @@ class DashboardController extends Controller
         ]);
 
         $degree->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'message' => 'Degree deleted successfully.',
+            ], 200);
+        }
 
         return redirect()->route('admin.degrees.index')->with('success', 'Degree deleted successfully');
     }
