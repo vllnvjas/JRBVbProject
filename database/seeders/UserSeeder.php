@@ -7,7 +7,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-class UserAccountSeeder extends Seeder
+class UserSeeder extends Seeder
 {
     use WithoutModelEvents;
 
