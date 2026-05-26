@@ -43,7 +43,7 @@
                     </ul>
                 </div>
                 @endif
-                <div data-js-form data-action="{{ route('admin.degrees.store') }}">
+                <form id="adminAddDegreeForm" method="POST" action="{{ route('admin.degrees.store') }}" data-js-form data-action="{{ route('admin.degrees.store') }}" data-reload-on-success="false">
                     @csrf
                     <div class="mb-3">
                         <label for="degree_name" class="form-label">Degree Name</label>
@@ -52,8 +52,8 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <button type="button" class="btn btn-success" data-js-submit>Add Degree</button>
-                </div>
+                    <button type="submit" class="btn btn-success" data-js-submit>Add Degree</button>
+                </form>
             </div>
         </div>
     </div>
@@ -123,4 +123,68 @@
         @endif
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('adminAddDegreeForm');
+    if (!form) return;
+
+    var submitButton = form.querySelector('[data-js-submit]');
+
+    function showAlert(type, message) {
+        var existing = form.querySelector('[data-degree-create-alert]');
+        if (existing) existing.remove();
+
+        var alertBox = document.createElement('div');
+        alertBox.className = 'alert alert-' + type + ' mt-3';
+        alertBox.setAttribute('role', 'alert');
+        alertBox.setAttribute('data-degree-create-alert', 'true');
+        alertBox.textContent = message;
+        form.prepend(alertBox);
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest || !event.target.closest('#adminAddDegreeForm [data-js-submit]')) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        if (submitButton) submitButton.disabled = true;
+
+        var formData = new FormData(form);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', form.dataset.action, true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.onload = function () {
+            if (submitButton) submitButton.disabled = false;
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.reload();
+                return;
+            }
+
+            if (xhr.status === 422) {
+                try {
+                    var payload = JSON.parse(xhr.responseText);
+                    var firstError = payload && payload.errors ? Object.values(payload.errors).flat()[0] : (payload && payload.message ? payload.message : null);
+                    showAlert('danger', firstError || 'Please fix the validation errors and try again.');
+                } catch (e) {
+                    showAlert('danger', 'Please fix the validation errors and try again.');
+                }
+                return;
+            }
+
+            showAlert('danger', 'Unable to add the degree right now.');
+        };
+
+        xhr.onerror = function () {
+            if (submitButton) submitButton.disabled = false;
+            showAlert('danger', 'Network error while adding the degree.');
+        };
+
+        xhr.send(formData);
+    }, true);
+});
+</script>
 @endsection
