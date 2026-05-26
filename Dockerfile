@@ -21,4 +21,4 @@ RUN php artisan key:generate
 EXPOSE 10000
 
 # CMD php artisan serve --host=0.0.0.0 --port=10000
-CMD sh -c "php artisan migrate --force && php artisan db:seed --class=UserSeeder --force && php -S 0.0.0.0:${PORT:-10000} -t public public/index.php"
+CMD sh -c "php artisan migrate --force && php artisan db:seed --class=Database\\\\Seeders\\\\DatabaseSeeder --force && php -S 0.0.0.0:${PORT:-10000} -t public public/index.php"
