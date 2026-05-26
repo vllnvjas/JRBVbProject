@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
         );
 
         // Seed user accounts with admin, teacher, and student roles
-        $this->call(UserAccountSeeder::class);
+        $this->call(UserSeeder::class);
+
+        $this->call(DegreeSeeder::class);
     }
 }
